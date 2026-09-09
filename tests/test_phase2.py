@@ -3,8 +3,11 @@ from __future__ import annotations
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, select
 
 from guardrails_text2sql import (
+    GeneratedSQL,
     GuardrailConfig,
+    HallucinationDetector,
     QueryExecutor,
+    QueryExecutionResult,
     SQLGuardrailMiddleware,
     StructuredOutputParser,
 )
@@ -128,3 +131,70 @@ def test_executor_raises_for_blocked_sql():
         assert "Unsafe SQL blocked" in str(exc)
     else:
         raise AssertionError("Expected unsafe SQL to be blocked")
+
+
+def test_executor_blocks_queries_above_explain_estimated_row_limit():
+    engine, _ = build_engine()
+    guardrails = SQLGuardrailMiddleware(GuardrailConfig(max_estimated_rows=100))
+    executor = QueryExecutor(engine, guardrails)
+    executor._explain = lambda _: ({"QUERY PLAN": "Seq Scan on customers (rows=101)"},)
+
+    result = executor.validate("SELECT id FROM customers")
+
+    assert not result.allowed
+    assert {violation.code for violation in result.violations} == {"estimated_rows"}
+
+
+def test_hallucination_detector_combines_back_translation_and_result_signals():
+    generated = GeneratedSQL(
+        sql="SELECT region, COUNT(*) AS customer_count FROM customers GROUP BY region",
+        explanation="Counts customers by region.",
+        confidence=0.9,
+    )
+    execution = QueryExecutionResult(
+        sql=generated.sql,
+        rows=({"region": "North"},),
+        row_count=1,
+        execution_time_ms=1.0,
+    )
+
+    result = HallucinationDetector(
+        translator=lambda _: "How many customers are in each region?"
+    ).validate("How many customers are in each region?", generated, execution)
+
+    assert result.confidence == 0.9667
+    assert result.passed
+    assert {signal.name for signal in result.signals} == {
+        "generation_confidence",
+        "back_translation_alignment",
+        "result_sanity",
+    }
+
+
+def test_hallucination_detector_flags_null_heavy_results():
+    generated = GeneratedSQL("SELECT customers.name FROM customers", "Lists names.", 0.95)
+    execution = QueryExecutionResult(
+        sql=generated.sql,
+        rows=({"name": None}, {"name": None}),
+        row_count=2,
+        execution_time_ms=1.0,
+    )
+
+    result = HallucinationDetector().validate("List customer names", generated, execution)
+
+    assert not result.passed
+    assert any("NULL" in reason for reason in result.reasons)
+
+
+def test_hallucination_detector_flags_disagreeing_independent_queries():
+    generated = GeneratedSQL("SELECT region FROM customers", "Lists regions.", 0.9)
+    primary = QueryExecutionResult(generated.sql, ({"region": "North"},), 1, 1.0)
+    alternative = QueryExecutionResult(generated.sql, ({"region": "South"},), 1, 1.0)
+
+    result = HallucinationDetector().validate(
+        "List customer regions", generated, primary, alternative_execution=alternative
+    )
+
+    agreement = next(signal for signal in result.signals if signal.name == "multi_query_agreement")
+    assert not agreement.passed
+    assert "disagree" in agreement.explanation

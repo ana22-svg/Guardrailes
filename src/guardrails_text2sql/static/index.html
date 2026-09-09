@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guardrails | Text-to-SQL Control Room</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Guardrails home">
+        <span class="brand-mark">G</span>
+        <span><strong>GUARDRAILS</strong><small>TEXT-TO-SQL CONTROL ROOM</small></span>
+      </a>
+      <div class="topbar-meta"><span class="status-dot"></span> READ-ONLY GATE ACTIVE <span class="slash">/</span> LOCAL SESSION</div>
+    </header>
+
+    <main class="workspace">
+      <section class="hero-row">
+        <div>
+          <p class="eyebrow">QUERY WORKBENCH <span>01</span></p>
+          <h1>Ask the warehouse.<br><em>See the reasoning.</em></h1>
+          <p class="lede">Translate business questions into guarded SQL with a visible confidence trail before anything reaches the database.</p>
+        </div>
+        <div class="hero-stat"><span>POLICY</span><strong>SELECT ONLY</strong><small>Writes, stacking, and deep subqueries are blocked before execution.</small></div>
+      </section>
+
+      <section class="query-panel panel">
+        <div class="panel-head"><div><span class="panel-kicker">NATURAL LANGUAGE INPUT</span><h2>What do you need to know?</h2></div><span class="shortcut">CTRL + ENTER</span></div>
+        <form id="query-form">
+          <textarea id="question" rows="3" placeholder="Example: Show net revenue by customer region" required></textarea>
+          <div class="query-actions"><div class="suggestions"><button type="button" data-question="List all customers by region">Customers by region</button><button type="button" data-question="Show net revenue by customer">Net revenue</button><button type="button" data-question="Which support tickets are open?">Open tickets</button></div><button class="run-button" type="submit"><span>RUN GUARDED QUERY</span><b>-></b></button></div>
+        </form>
+      </section>
+
+      <div id="notice" class="notice" role="status" hidden></div>
+
+      <section class="results-grid">
+        <div class="result-column">
+          <section class="panel sql-panel">
+            <div class="panel-head"><div><span class="panel-kicker">GENERATED SQL</span><h2 id="result-title">Waiting for a question</h2></div><button class="icon-button" id="copy-sql" title="Copy SQL" disabled>COPY</button></div>
+            <pre id="sql-output" class="code-block"><code>-- Your guarded query will appear here</code></pre>
+            <div class="explanation" id="explanation">The model's explanation and safety checks will be shown alongside the query.</div>
+          </section>
+          <section class="panel data-panel">
+            <div class="panel-head"><div><span class="panel-kicker">RESULT SET</span><h2 id="result-count">No rows yet</h2></div><span id="execution-meta" class="muted">--</span></div>
+            <div id="table-wrap" class="table-wrap"><div class="empty-state">Run a question to inspect the returned data.</div></div>
+          </section>
+        </div>
+
+        <aside class="side-column">
+          <section class="panel confidence-panel"><div class="panel-head"><div><span class="panel-kicker">TRUST SIGNAL</span><h2>Confidence</h2></div></div><div class="confidence-score"><div id="confidence-ring" class="ring"><strong id="confidence-value">--</strong><span>score</span></div><div><strong id="confidence-label">Awaiting result</strong><p id="confidence-reason">Signals appear after execution.</p></div></div><div id="signals" class="signals"></div></section>
+          <section class="panel history-panel"><div class="panel-head"><div><span class="panel-kicker">SESSION LOG</span><h2>Recent questions</h2></div><button class="text-button" id="refresh-history">REFRESH</button></div><div id="history" class="history-list"><div class="empty-state compact">No queries in this session.</div></div></section>
+          <section class="panel feedback-panel"><div class="panel-head"><div><span class="panel-kicker">HUMAN REVIEW</span><h2>Was this useful?</h2></div></div><p class="muted">Your review is stored with this query for evaluation and future prompt improvements.</p><div class="feedback-actions"><button id="feedback-yes" disabled>YES, CORRECT</button><button id="feedback-no" disabled>NO, REVIEW</button></div></section>
+        </aside>
+      </section>
+    </main>
+    <footer><span>GUARDRAILS TEXT-TO-SQL</span><span>SCHEMA-AWARE / AUDITABLE / READ-ONLY</span></footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

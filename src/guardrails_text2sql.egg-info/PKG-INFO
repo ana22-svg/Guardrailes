@@ -3,7 +3,9 @@ Name: guardrails-text2sql
 Version: 0.1.0
 Summary: Schema-aware prompt engine for a guarded text-to-SQL interface.
 Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.115.0
 Requires-Dist: sqlalchemy>=2.0.0
 Requires-Dist: sqlparse>=0.5.0
 Provides-Extra: dev
+Requires-Dist: httpx>=0.27.0; extra == "dev"
 Requires-Dist: pytest>=8.0.0; extra == "dev"

@@ -1,0 +1,10 @@
+services:
+  text2sql:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - demo-data:/app/data
+
+volumes:
+  demo-data:

@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 src/guardrails_text2sql/__init__.py
 src/guardrails_text2sql/ambiguity.py
+src/guardrails_text2sql/api.py
 src/guardrails_text2sql/engine.py
 src/guardrails_text2sql/execution.py
 src/guardrails_text2sql/generation.py
@@ -10,6 +11,8 @@ src/guardrails_text2sql/models.py
 src/guardrails_text2sql/prompts.py
 src/guardrails_text2sql/relevance.py
 src/guardrails_text2sql/schema.py
+src/guardrails_text2sql/service.py
+src/guardrails_text2sql/validation.py
 src/guardrails_text2sql.egg-info/PKG-INFO
 src/guardrails_text2sql.egg-info/SOURCES.txt
 src/guardrails_text2sql.egg-info/dependency_links.txt

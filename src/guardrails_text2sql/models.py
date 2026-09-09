@@ -120,6 +120,7 @@ class GuardrailConfig:
     enforce_limit: bool = True
     block_multiple_statements: bool = True
     explain_before_execution: bool = False
+    max_estimated_rows: int | None = None
 
 
 @dataclass(frozen=True)
@@ -143,3 +144,22 @@ class QueryExecutionResult:
     row_count: int
     execution_time_ms: float
     explain_plan: tuple[dict[str, Any], ...] = ()
+
+
+@dataclass(frozen=True)
+class ValidationSignal:
+    name: str
+    score: float
+    passed: bool
+    explanation: str
+
+
+@dataclass(frozen=True)
+class HallucinationValidationResult:
+    confidence: float
+    signals: tuple[ValidationSignal, ...]
+    reasons: tuple[str, ...] = ()
+
+    @property
+    def passed(self) -> bool:
+        return all(signal.passed for signal in self.signals)

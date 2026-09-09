@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import time
+import re
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from guardrails_text2sql.guardrails import SQLGuardrailMiddleware
-from guardrails_text2sql.models import GuardrailResult, QueryExecutionResult
+from guardrails_text2sql.models import GuardrailResult, GuardrailViolation, QueryExecutionResult
 
 
 class QueryExecutor:
@@ -16,7 +17,29 @@ class QueryExecutor:
         self.guardrails = guardrails or SQLGuardrailMiddleware()
 
     def validate(self, sql: str) -> GuardrailResult:
-        return self.guardrails.validate(sql)
+        result = self.guardrails.validate(sql)
+        if not result.allowed or result.sql is None:
+            return result
+
+        max_estimated_rows = self.guardrails.config.max_estimated_rows
+        if max_estimated_rows is None:
+            return result
+
+        plan = self._explain(result.sql)
+        estimated_rows = self._estimated_rows(plan)
+        if estimated_rows is None or estimated_rows <= max_estimated_rows:
+            return result
+
+        violation = GuardrailViolation(
+            "estimated_rows",
+            f"Estimated scan of {estimated_rows} rows exceeds limit {max_estimated_rows}.",
+        )
+        return GuardrailResult(
+            allowed=False,
+            sql=None,
+            violations=(*result.violations, violation),
+            warnings=result.warnings,
+        )
 
     def execute(self, sql: str) -> QueryExecutionResult:
         guardrail_result = self.guardrails.validate(sql)
@@ -52,3 +75,15 @@ class QueryExecutor:
                 return tuple(dict(row._mapping) for row in result)
         except Exception:
             return ()
+
+    def _estimated_rows(self, plan: tuple[dict[str, Any], ...]) -> int | None:
+        estimates: list[int] = []
+        for row in plan:
+            for key, value in row.items():
+                key_text = str(key).lower()
+                value_text = str(value)
+                if "row" in key_text and value_text.isdigit():
+                    estimates.append(int(value_text))
+                for match in re.finditer(r"\brows[= ]+(\d+)", value_text, re.IGNORECASE):
+                    estimates.append(int(match.group(1)))
+        return max(estimates, default=None)
